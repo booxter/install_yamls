@@ -20,6 +20,13 @@ trap 'rm -rf -- "$MY_TMP_DIR"' EXIT
 
 SCRIPTPATH="$( cd "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
 
+export LIBVIRT_DEFAULT_URI=qemu:///system
+EDPM_COMPUTE_NETWORK_IP=$(virsh net-dumpxml ${EDPM_COMPUTE_NETWORK} | xmllint --xpath 'string(/network/ip/@address)' -)
+if [ "${EDPM_SERVER_ROLE}" == "networker" ]; then
+    IP_ADDRESS_SUFFIX=${IP_ADDRESS_SUFFIX:-"$((200+${EDPM_COMPUTE_SUFFIX}))"}
+else
+    IP_ADDRESS_SUFFIX=${IP_ADDRESS_SUFFIX:-"$((100+${EDPM_COMPUTE_SUFFIX}))"}
+fi
 IP=${IP:-"${EDPM_COMPUTE_NETWORK_IP%.*}.${IP_ADDRESS_SUFFIX}"}
 OS_NET_CONFIG_IFACE=${OS_NET_CONFIG_IFACE:-"nic1"}
 GATEWAY=${GATEWAY:-"${EDPM_COMPUTE_NETWORK_IP}"}
@@ -118,27 +125,43 @@ EOF
 jinja2_render tripleo/net_config.j2 "${J2_VARS_FILE}" > ${MY_TMP_DIR}/net_config.yaml
 jinja2_render tripleo/undercloud.conf.j2 "${J2_VARS_FILE}" > ${MY_TMP_DIR}/undercloud.conf
 
+if [[ ! -f $REPO_SETUP_CMDS ]]; then
+    cat <<EOF > $REPO_SETUP_CMDS
+set -ex
+sudo dnf remove -y epel-release
+sudo dnf update -y
+sudo dnf install -y vim git curl util-linux lvm2 tmux wget
+URL=https://trunk.rdoproject.org/centos9-wallaby/component/tripleo/current-tripleo/
+RPM_NAME=\$(curl \$URL | grep python3-tripleo-repos | sed -e 's/<[^>]*>//g' | awk 'BEGIN { FS = ".rpm" } ; { print \$1 }')
+RPM=\$RPM_NAME.rpm
+sudo dnf install -y \$URL\$RPM
+sudo -E tripleo-repos -b wallaby current-tripleo-dev ceph --stream
+sudo dnf repolist
+sudo dnf update -y
+EOF
+fi
+
 # Copying files
 scp $SSH_OPT $REPO_SETUP_CMDS root@$IP:/tmp/repo-setup.sh
-scp $SSH_OPT $CMDS_FILE zuul@$IP:/tmp/undercloud-deploy-cmds.sh
+scp $SSH_OPT $CMDS_FILE root@$IP:/tmp/undercloud-deploy-cmds.sh
 scp $SSH_OPT ${MY_TMP_DIR}/net_config.yaml root@$IP:/tmp/net_config.yaml
-scp $SSH_OPT tripleo/tripleo_install.sh zuul@$IP:$HOME/tripleo_install.sh
-scp $SSH_OPT tripleo/hieradata_overrides_undercloud.yaml zuul@$IP:$HOME/hieradata_overrides_undercloud.yaml
-scp $SSH_OPT tripleo/undercloud-parameter-defaults.yaml zuul@$IP:$HOME/undercloud-parameter-defaults.yaml
-scp $SSH_OPT ${MY_TMP_DIR}/undercloud.conf zuul@$IP:$HOME/undercloud.conf
-scp $SSH_OPT tripleo/network_data.yaml zuul@$IP:$HOME/network_data.yaml
-scp $SSH_OPT tripleo/vips_data.yaml zuul@$IP:$HOME/vips_data.yaml
-scp $SSH_OPT tripleo/config-download.yaml zuul@$IP:$HOME/config-download.yaml
-scp $SSH_OPT tripleo/overcloud_roles.yaml zuul@$IP:$HOME/overcloud_roles.yaml
-scp $SSH_OPT tripleo/overcloud_services.yaml zuul@$IP:$HOME/overcloud_services.yaml
-scp $SSH_OPT tripleo/ansible_config.cfg zuul@$IP:$HOME/ansible_config.cfg
+scp $SSH_OPT tripleo/tripleo_install.sh root@$IP:~/tripleo_install.sh
+scp $SSH_OPT tripleo/hieradata_overrides_undercloud.yaml root@$IP:~/hieradata_overrides_undercloud.yaml
+scp $SSH_OPT tripleo/undercloud-parameter-defaults.yaml root@$IP:~/undercloud-parameter-defaults.yaml
+scp $SSH_OPT ${MY_TMP_DIR}/undercloud.conf root@$IP:~/undercloud.conf
+scp $SSH_OPT tripleo/network_data.yaml root@$IP:~/network_data.yaml
+scp $SSH_OPT tripleo/vips_data.yaml root@$IP:~/vips_data.yaml
+scp $SSH_OPT tripleo/config-download.yaml root@$IP:~/config-download.yaml
+scp $SSH_OPT tripleo/overcloud_roles.yaml root@$IP:~/overcloud_roles.yaml
+scp $SSH_OPT tripleo/overcloud_services.yaml root@$IP:~/overcloud_services.yaml
+scp $SSH_OPT tripleo/ansible_config.cfg root@$IP:~/ansible_config.cfg
 
-if [[ -f $HOME/containers-prepare-parameters.yaml ]]; then
-    scp $SSH_OPT $HOME/containers-prepare-parameters.yaml zuul@$IP:$HOME/containers-prepare-parameters.yaml
+if [[ -f ~/containers-prepare-parameters.yaml ]]; then
+    scp $SSH_OPT ~/containers-prepare-parameters.yaml root@$IP:~/containers-prepare-parameters.yaml
 fi
 
 # Running
 if [[ -z ${SKIP_TRIPLEO_REPOS} || ${SKIP_TRIPLEO_REPOS} == "false" ]]; then
     ssh $SSH_OPT root@$IP "bash /tmp/repo-setup.sh"
 fi
-ssh $SSH_OPT zuul@$IP "bash /tmp/undercloud-deploy-cmds.sh"
+ssh $SSH_OPT root@$IP "bash /tmp/undercloud-deploy-cmds.sh"

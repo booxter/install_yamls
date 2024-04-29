@@ -22,6 +22,7 @@ NETWORK_ISOLATION_IPV4_NAT ?= true
 NETWORK_ISOLATION_IPV6_ADDRESS ?= fd00:aaaa::1/64
 NETWORK_ISOLATION_INSTANCE_NAME ?= crc
 
+EDPM_COMPUTE_NETWORK ?= ${NETWORK_ISOLATION_NET_NAME}
 EDPM_SERVER_ROLE ?= compute
 EDPM_COMPUTE_SUFFIX ?= 0
 EDPM_NETWORKER_SUFFIX ?= 0
@@ -346,7 +347,6 @@ edpm_baremetal_compute_cleanup:  ## Cleanup dataplane with BMAAS
 	make bmaas_virtual_bms_cleanup || true
 
 .PHONY: edpm_compute
-edpm_compute: export EDPM_COMPUTE_NETWORK = ${NETWORK_ISOLATION_NET_NAME}
 edpm_compute: ## Create EDPM compute VM
 	$(eval $(call vars))
 	scripts/gen-ansibleee-ssh-key.sh
@@ -419,6 +419,13 @@ edpm_networker_snapshot: edpm_snapshot ## Create edpm_networker snapshot
 edpm_networker_revert: export EDPM_SERVER_ROLE=networker
 edpm_networker_revert: standalone_revert ## Revert edpm_networker snapshot
 
+.PHONY: edpm_networker_deploy
+edpm_networker_deploy: export EDPM_SERVER_ROLE=networker
+edpm_networker_deploy: export EDPM_COMPUTE_NETWORK=${NETWORK_ISOLATION_NET_NAME}
+edpm_networker_deploy:
+	$(eval $(call vars))
+	EDPM_COMPUTE_SUFFIX=${EDPM_COMPUTE_SUFFIX} scripts/tripleo.sh
+
 .PHONY: edpm_deploy_instance
 edpm_deploy_instance: ## Spin a instance on edpm node
 	-oc cp scripts/edpm-deploy-instance.sh openstackclient:/tmp/
@@ -441,14 +448,12 @@ standalone_deploy: export COMPUTE_SRIOV_ENABLED=${EDPM_COMPUTE_SRIOV_ENABLED}
 standalone_deploy: export COMPUTE_DHCP_AGENT_ENABLED=${EDPM_COMPUTE_DHCP_AGENT_ENABLED}
 standalone_deploy: export STANDALONE=true
 standalone_deploy: export INTERFACE_MTU=${NETWORK_MTU}
-standalone_deploy: export EDPM_COMPUTE_NETWORK = ${NETWORK_ISOLATION_NET_NAME}
 standalone_deploy:
 	$(eval $(call vars))
 	scripts/standalone.sh ${EDPM_COMPUTE_SUFFIX} ${STANDALONE_COMPUTE_DRIVER} '${EDPM_COMPUTE_ADDITIONAL_NETWORKS}' '${EDPM_COMPUTE_ADDITIONAL_HOST_ROUTES}'
 
 .PHONY: standalone_sync
 standalone_sync: export STANDALONE=true
-standalone_sync: export EDPM_COMPUTE_NETWORK = ${NETWORK_ISOLATION_NET_NAME}
 standalone_sync:
 	$(eval $(call vars))
 	scripts/edpm-sync.sh ${EDPM_COMPUTE_SUFFIX} ${STANDALONE_COMPUTE_DRIVER} '${EDPM_COMPUTE_ADDITIONAL_NETWORKS}' '${EDPM_COMPUTE_ADDITIONAL_HOST_ROUTES}'
