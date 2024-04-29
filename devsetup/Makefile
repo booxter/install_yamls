@@ -469,6 +469,7 @@ standalone_snapshot: ## Create standalone snapshot
 	$(eval $(call vars))
 	virsh --connect=qemu:///system detach-device-alias edpm-${EDPM_SERVER_ROLE}-${EDPM_COMPUTE_SUFFIX} fs0 --live || true
 	sleep 3
+	virsh --connect=qemu:///system snapshot-delete edpm-${EDPM_SERVER_ROLE}-${EDPM_COMPUTE_SUFFIX} --snapshotname clean || true
 	virsh --connect=qemu:///system snapshot-create-as --atomic --domain edpm-${EDPM_SERVER_ROLE}-${EDPM_COMPUTE_SUFFIX} --name clean
 
 .PHONY: standalone_revert
