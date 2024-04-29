@@ -20,7 +20,7 @@ trap 'rm -rf -- "$MY_TMP_DIR"' EXIT
 
 SCRIPTPATH="$( cd "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
 
-IP=${IP:-"${EDPM_COMPUTE_NETWORK_IP%.*}.${IP_ADRESS_SUFFIX}"}
+IP=${IP:-"${EDPM_COMPUTE_NETWORK_IP%.*}.${IP_ADDRESS_SUFFIX}"}
 OS_NET_CONFIG_IFACE=${OS_NET_CONFIG_IFACE:-"nic1"}
 GATEWAY=${GATEWAY:-"${EDPM_COMPUTE_NETWORK_IP}"}
 OUTPUT_DIR=${OUTPUT_DIR:-"${SCRIPTPATH}/../../out/edpm/"}
@@ -108,7 +108,7 @@ ctlplane_cidr: 24
 ctlplane_ip: ${IP}
 os_net_config_iface: ${OS_NET_CONFIG_IFACE}
 ctlplane_vip: ${IP%.*}.99
-ip_address_suffix: ${IP_ADRESS_SUFFIX}
+ip_address_suffix: ${IP_ADDRESS_SUFFIX}
 interface_mtu: ${INTERFACE_MTU:-1500}
 gateway_ip: ${GATEWAY}
 dns_server: ${PRIMARY_RESOLV_CONF_ENTRY}
