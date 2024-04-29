@@ -24,8 +24,12 @@ STANDALONE_VM=${STANDALONE_VM:-"true"}
 if [[ ${STANDALONE_VM} == "true" ]]; then
     EDPM_COMPUTE_NETWORK_IP=$(virsh net-dumpxml ${EDPM_COMPUTE_NETWORK} | xmllint --xpath 'string(/network/ip/@address)' -)
 fi
-IP_ADRESS_SUFFIX=${IP_ADRESS_SUFFIX:-"$((100+${EDPM_COMPUTE_SUFFIX}))"}
-IP=${IP:-"${EDPM_COMPUTE_NETWORK_IP%.*}.${IP_ADRESS_SUFFIX}"}
+if [ "${EDPM_SERVER_ROLE}" == "networker" ]; then
+    IP_ADDRESS_SUFFIX=${IP_ADDRESS_SUFFIX:-"$((200+${EDPM_COMPUTE_SUFFIX}))"}
+else
+    IP_ADDRESS_SUFFIX=${IP_ADDRESS_SUFFIX:-"$((100+${EDPM_COMPUTE_SUFFIX}))"}
+fi
+IP=${IP:-"${EDPM_COMPUTE_NETWORK_IP%.*}.${IP_ADDRESS_SUFFIX}"}
 
 OUTPUT_DIR=${OUTPUT_DIR:-"${SCRIPTPATH}/../../out/edpm/"}
 SSH_KEY_FILE=${SSH_KEY_FILE:-"${OUTPUT_DIR}/ansibleee-ssh-key-id_rsa"}

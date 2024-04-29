@@ -22,6 +22,7 @@ NETWORK_ISOLATION_IPV4_NAT ?= true
 NETWORK_ISOLATION_IPV6_ADDRESS ?= fd00:aaaa::1/64
 NETWORK_ISOLATION_INSTANCE_NAME ?= crc
 
+EDPM_SERVER_ROLE ?= compute
 EDPM_COMPUTE_SUFFIX ?= 0
 EDPM_NETWORKER_SUFFIX ?= 0
 # EDPM_COMPUTE_ADDITIONAL_NETWORKS: JSON string - list of additional networks
@@ -410,6 +411,14 @@ edpm_networker_cleanup: ## Delete EDPM networker node VM
 		done \
 	fi
 
+.PHONY: edpm_networker_snapshot
+edpm_networker_snapshot: export EDPM_SERVER_ROLE=networker
+edpm_networker_snapshot: standalone_snapshot ## Create edpm_networker snapshot
+
+.PHONY: edpm_networker_revert
+edpm_networker_revert: export EDPM_SERVER_ROLE=networker
+edpm_networker_revert: standalone_revert ## Revert edpm_networker snapshot
+
 .PHONY: edpm_deploy_instance
 edpm_deploy_instance: ## Spin a instance on edpm node
 	-oc cp scripts/edpm-deploy-instance.sh openstackclient:/tmp/
@@ -458,14 +467,14 @@ standalone_cleanup: edpm_compute_cleanup ## Delete standalone VM
 .PHONY: standalone_snapshot
 standalone_snapshot: ## Create standalone snapshot
 	$(eval $(call vars))
-	virsh --connect=qemu:///system detach-device-alias edpm-compute-${EDPM_COMPUTE_SUFFIX} fs0 --live || true
+	virsh --connect=qemu:///system detach-device-alias edpm-${EDPM_SERVER_ROLE}-${EDPM_COMPUTE_SUFFIX} fs0 --live || true
 	sleep 3
-	virsh --connect=qemu:///system snapshot-create-as --atomic --domain edpm-compute-${EDPM_COMPUTE_SUFFIX} --name clean
+	virsh --connect=qemu:///system snapshot-create-as --atomic --domain edpm-${EDPM_SERVER_ROLE}-${EDPM_COMPUTE_SUFFIX} --name clean
 
 .PHONY: standalone_revert
 standalone_revert: ## Revert standalone snapshot
 	$(eval $(call vars))
-	virsh --connect=qemu:///system snapshot-revert --domain edpm-compute-${EDPM_COMPUTE_SUFFIX} --snapshotname clean
+	virsh --connect=qemu:///system snapshot-revert --domain edpm-${EDPM_SERVER_ROLE}-${EDPM_COMPUTE_SUFFIX} --snapshotname clean
 	make standalone_sync
 
 .PHONY: cifmw_prepare
