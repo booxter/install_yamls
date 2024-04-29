@@ -413,7 +413,7 @@ edpm_networker_cleanup: ## Delete EDPM networker node VM
 
 .PHONY: edpm_networker_snapshot
 edpm_networker_snapshot: export EDPM_SERVER_ROLE=networker
-edpm_networker_snapshot: standalone_snapshot ## Create edpm_networker snapshot
+edpm_networker_snapshot: edpm_snapshot ## Create edpm_networker snapshot
 
 .PHONY: edpm_networker_revert
 edpm_networker_revert: export EDPM_SERVER_ROLE=networker
@@ -465,7 +465,10 @@ standalone_cleanup: edpm_compute_cleanup ## Delete standalone VM
 	$(eval $(call vars))
 
 .PHONY: standalone_snapshot
-standalone_snapshot: ## Create standalone snapshot
+standalone_snapshot: edpm_snapshot ## Create standalone snapshot
+
+.PHONY: edpm_snapshot
+edpm_snapshot: ## Create edpm snapshot
 	$(eval $(call vars))
 	virsh --connect=qemu:///system detach-device-alias edpm-${EDPM_SERVER_ROLE}-${EDPM_COMPUTE_SUFFIX} fs0 --live || true
 	sleep 3
